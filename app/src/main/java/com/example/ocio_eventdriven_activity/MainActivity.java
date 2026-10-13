@@ -6,11 +6,13 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
@@ -26,252 +28,441 @@ import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
 
-    private final ExecutorService executorService =
-            Executors.newSingleThreadExecutor();
+    private static final String API_BASE_URL =
+            "https://user-api-qpau.onrender.com";
 
     private LinearLayout loginLayout;
-    private LinearLayout signUpLayout;
+    private ScrollView signUpScrollView;
     private LinearLayout otpLayout;
     private LinearLayout successLayout;
 
     private EditText usernameEditText;
     private EditText loginPasswordEditText;
 
+    private EditText firstNameEditText;
+    private EditText lastNameEditText;
     private EditText emailEditText;
     private EditText confirmEmailEditText;
     private EditText passwordEditText;
     private EditText confirmPasswordEditText;
 
     private EditText otpEditText;
+
     private TextView otpDisplayTextView;
     private TextView otpTimerTextView;
+    private TextView usersStatusTextView;
+    private TextView usersListTextView;
 
-    private String generatedOtp;
-    private CountDownTimer otpTimer;
+    private Button loginButton;
+    private Button openSignUpButton;
+    private Button signUpButton;
+    private Button cancelButton;
+    private Button verifyOtpButton;
+    private Button refreshOtpButton;
+
+    private final ExecutorService executorService =
+            Executors.newSingleThreadExecutor();
+
+    private String generatedOtp = "";
+    private boolean otpExpired = false;
+    private CountDownTimer countDownTimer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        initializeViews();
+        setupButtons();
+        showLoginScreen();
+    }
+
+    private void initializeViews() {
         loginLayout = findViewById(R.id.loginLayout);
-        signUpLayout = findViewById(R.id.signUpLayout);
+        signUpScrollView = findViewById(R.id.signUpScrollView);
         otpLayout = findViewById(R.id.otpLayout);
         successLayout = findViewById(R.id.successLayout);
 
         usernameEditText = findViewById(R.id.usernameEditText);
-        loginPasswordEditText = findViewById(R.id.loginPasswordEditText);
+        loginPasswordEditText =
+                findViewById(R.id.loginPasswordEditText);
 
+        firstNameEditText = findViewById(R.id.firstNameEditText);
+        lastNameEditText = findViewById(R.id.lastNameEditText);
         emailEditText = findViewById(R.id.emailEditText);
-        confirmEmailEditText = findViewById(R.id.confirmEmailEditText);
+        confirmEmailEditText =
+                findViewById(R.id.confirmEmailEditText);
         passwordEditText = findViewById(R.id.passwordEditText);
-        confirmPasswordEditText = findViewById(R.id.confirmPasswordEditText);
+        confirmPasswordEditText =
+                findViewById(R.id.confirmPasswordEditText);
 
         otpEditText = findViewById(R.id.otpEditText);
-        otpDisplayTextView = findViewById(R.id.otpDisplayTextView);
-        otpTimerTextView = findViewById(R.id.otpTimerTextView);
+        otpDisplayTextView =
+                findViewById(R.id.otpDisplayTextView);
+        otpTimerTextView =
+                findViewById(R.id.otpTimerTextView);
 
-        Button loginButton = findViewById(R.id.loginButton);
-        Button openSignUpButton = findViewById(R.id.openSignUpButton);
-        Button signUpButton = findViewById(R.id.signUpButton);
-        Button cancelButton = findViewById(R.id.cancelButton);
-        Button verifyOtpButton = findViewById(R.id.verifyOtpButton);
+        usersStatusTextView =
+                findViewById(R.id.usersStatusTextView);
+        usersListTextView =
+                findViewById(R.id.usersListTextView);
+
+        loginButton = findViewById(R.id.loginButton);
+        openSignUpButton =
+                findViewById(R.id.openSignUpButton);
+        signUpButton = findViewById(R.id.signUpButton);
+        cancelButton = findViewById(R.id.cancelButton);
+        verifyOtpButton = findViewById(R.id.verifyOtpButton);
+        refreshOtpButton = findViewById(R.id.refreshOtpButton);
+    }
+
+    private void setupButtons() {
+        loginButton.setOnClickListener(v -> login());
 
         openSignUpButton.setOnClickListener(v -> {
             loginLayout.setVisibility(View.GONE);
-            signUpLayout.setVisibility(View.VISIBLE);
             otpLayout.setVisibility(View.GONE);
             successLayout.setVisibility(View.GONE);
-        });
-
-        cancelButton.setOnClickListener(v -> {
-            signUpLayout.setVisibility(View.GONE);
-            loginLayout.setVisibility(View.VISIBLE);
+            signUpScrollView.setVisibility(View.VISIBLE);
         });
 
         signUpButton.setOnClickListener(v -> signUp());
 
-        loginButton.setOnClickListener(v -> login());
+        cancelButton.setOnClickListener(v -> showLoginScreen());
 
         verifyOtpButton.setOnClickListener(v -> verifyOtp());
+
+        refreshOtpButton.setOnClickListener(v -> generateNewOtp());
+    }
+
+    private void showLoginScreen() {
+        if (countDownTimer != null) {
+            countDownTimer.cancel();
+        }
+
+        loginLayout.setVisibility(View.VISIBLE);
+        signUpScrollView.setVisibility(View.GONE);
+        otpLayout.setVisibility(View.GONE);
+        successLayout.setVisibility(View.GONE);
     }
 
     private void signUp() {
+        String firstName =
+                firstNameEditText.getText().toString().trim();
+        String lastName =
+                lastNameEditText.getText().toString().trim();
+        String email =
+                emailEditText.getText().toString().trim();
+        String confirmEmail =
+                confirmEmailEditText.getText().toString().trim();
+        String password =
+                passwordEditText.getText().toString();
+        String confirmPassword =
+                confirmPasswordEditText.getText().toString();
 
-        String email = emailEditText.getText().toString().trim();
-        String confirmEmail = confirmEmailEditText.getText().toString().trim();
-        String password = passwordEditText.getText().toString();
-        String confirmPassword = confirmPasswordEditText.getText().toString();
-
-        if (email.isEmpty()
-                || confirmEmail.isEmpty()
-                || password.isEmpty()
-                || confirmPassword.isEmpty()) {
-
-            Toast.makeText(
-                    this,
-                    getString(R.string.please_fill_all_fields),
-                    Toast.LENGTH_SHORT
-            ).show();
-
-        } else if (!email.equals(confirmEmail)) {
-
-            Toast.makeText(
-                    this,
-                    getString(R.string.emails_do_not_match),
-                    Toast.LENGTH_SHORT
-            ).show();
-
-        } else if (!password.equals(confirmPassword)) {
-
-            Toast.makeText(
-                    this,
-                    getString(R.string.passwords_do_not_match),
-                    Toast.LENGTH_SHORT
-            ).show();
-
-        } else {
-
-            Toast.makeText(
-                    this,
-                    getString(R.string.signup_successful),
-                    Toast.LENGTH_SHORT
-            ).show();
-
-            signUpLayout.setVisibility(View.GONE);
-            loginLayout.setVisibility(View.VISIBLE);
-        }
-    }
-
-    private void login() {
-
-        String email = usernameEditText.getText().toString().trim();
-        String password = loginPasswordEditText.getText().toString();
-
-        if (email.isEmpty() || password.isEmpty()) {
-
-            Toast.makeText(
-                    this,
-                    getString(R.string.please_fill_all_fields),
-                    Toast.LENGTH_SHORT
-            ).show();
-
+        if (firstName.isEmpty() || lastName.isEmpty()
+                || email.isEmpty() || confirmEmail.isEmpty()
+                || password.isEmpty() || confirmPassword.isEmpty()) {
+            Toast.makeText(this, "Please fill in all fields.",
+                    Toast.LENGTH_SHORT).show();
             return;
         }
 
+        if (!email.equalsIgnoreCase(confirmEmail)) {
+            confirmEmailEditText.setError("Emails do not match");
+            return;
+        }
+
+        if (!password.equals(confirmPassword)) {
+            confirmPasswordEditText.setError("Passwords do not match");
+            return;
+        }
+
+        signUpButton.setEnabled(false);
+
         executorService.execute(() -> {
-
-            HttpURLConnection connection = null;
-
             try {
+                JSONObject requestBody = new JSONObject();
+                requestBody.put("FirstName", firstName);
+                requestBody.put("LastName", lastName);
+                requestBody.put("Email", email);
+                requestBody.put("Password", password);
 
-                URL url = new URL(
-                        "https://user-api-qpau.onrender.com/login"
-                );
-
-                connection = (HttpURLConnection) url.openConnection();
-
-                connection.setRequestMethod("POST");
-
-                connection.setRequestProperty(
-                        "Content-Type",
-                        "application/json; charset=UTF-8"
-                );
-
-                connection.setConnectTimeout(15000);
-                connection.setReadTimeout(15000);
-                connection.setDoOutput(true);
-
-                JSONObject request = new JSONObject();
-
-                request.put("Email", email);
-                request.put("Password", password);
-
-                try (OutputStream outputStream =
-                             connection.getOutputStream()) {
-
-                    byte[] input =
-                            request.toString()
-                                    .getBytes(StandardCharsets.UTF_8);
-
-                    outputStream.write(input);
-                }
-
-                int responseCode =
-                        connection.getResponseCode();
-
-                InputStream inputStream;
-
-                if (responseCode >= 400) {
-                    inputStream = connection.getErrorStream();
-                } else {
-                    inputStream = connection.getInputStream();
-                }
-
-                StringBuilder response =
-                        new StringBuilder();
-
-                try (BufferedReader reader =
-                             new BufferedReader(
-                                     new InputStreamReader(inputStream))) {
-
-                    String line;
-
-                    while ((line = reader.readLine()) != null) {
-                        response.append(line);
-                    }
-                }
-
-                JSONObject jsonResponse =
-                        new JSONObject(response.toString());
-
-                String message =
-                        jsonResponse.optString(
-                                "message",
-                                "Login failed."
-                        );
+                JSONObject response = sendRequest(
+                        "/register", "POST", requestBody);
 
                 boolean success =
-                        jsonResponse.optBoolean(
-                                "success",
-                                false
-                        );
+                        response.optBoolean("success", false);
+
+                String message = response.optString(
+                        "message",
+                        success ? "Registration successful."
+                                : "Registration failed.");
 
                 runOnUiThread(() -> {
+                    signUpButton.setEnabled(true);
+
+                    Toast.makeText(MainActivity.this, message,
+                            Toast.LENGTH_LONG).show();
 
                     if (success) {
+                        usernameEditText.setText(email);
+                        loginPasswordEditText.setText("");
 
-                        Toast.makeText(
-                                MainActivity.this,
-                                "Login successful!",
-                                Toast.LENGTH_SHORT
-                        ).show();
+                        firstNameEditText.setText("");
+                        lastNameEditText.setText("");
+                        emailEditText.setText("");
+                        confirmEmailEditText.setText("");
+                        passwordEditText.setText("");
+                        confirmPasswordEditText.setText("");
 
-                        showOtpPage();
-
-                    } else {
-
-                        Toast.makeText(
-                                MainActivity.this,
-                                message,
-                                Toast.LENGTH_SHORT
-                        ).show();
+                        showLoginScreen();
                     }
                 });
 
             } catch (Exception e) {
+                runOnUiThread(() -> {
+                    signUpButton.setEnabled(true);
 
-                runOnUiThread(() ->
-                        Toast.makeText(
-                                MainActivity.this,
-                                "Connection error: "
-                                        + e.getMessage(),
-                                Toast.LENGTH_LONG
-                        ).show()
-                );
+                    Toast.makeText(MainActivity.this,
+                            "Signup error: " + e.getMessage(),
+                            Toast.LENGTH_LONG).show();
+                });
+            }
+        });
+    }
+
+    private void login() {
+        String email =
+                usernameEditText.getText().toString().trim();
+        String password =
+                loginPasswordEditText.getText().toString();
+
+        if (email.isEmpty() || password.isEmpty()) {
+            Toast.makeText(this,
+                    "Enter your email and password.",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        loginButton.setEnabled(false);
+
+        executorService.execute(() -> {
+            try {
+                JSONObject requestBody = new JSONObject();
+                requestBody.put("Email", email);
+                requestBody.put("Password", password);
+
+                JSONObject response = sendRequest(
+                        "/login", "POST", requestBody);
+
+                boolean success =
+                        response.optBoolean("success", false);
+
+                String message = response.optString(
+                        "message", "Invalid email or password.");
+
+                runOnUiThread(() -> {
+                    loginButton.setEnabled(true);
+
+                    if (success) {
+                        showOtpScreen();
+                    } else {
+                        Toast.makeText(MainActivity.this,
+                                message, Toast.LENGTH_LONG).show();
+                    }
+                });
+
+            } catch (Exception e) {
+                runOnUiThread(() -> {
+                    loginButton.setEnabled(true);
+
+                    Toast.makeText(MainActivity.this,
+                            "Login error: " + e.getMessage(),
+                            Toast.LENGTH_LONG).show();
+                });
+            }
+        });
+    }
+
+    private void showOtpScreen() {
+        loginLayout.setVisibility(View.GONE);
+        signUpScrollView.setVisibility(View.GONE);
+        successLayout.setVisibility(View.GONE);
+        otpLayout.setVisibility(View.VISIBLE);
+
+        generateNewOtp();
+    }
+
+    private void generateNewOtp() {
+        otpEditText.setText("");
+        otpExpired = false;
+
+        int otpNumber = 100000 + new Random().nextInt(900000);
+        generatedOtp = String.valueOf(otpNumber);
+
+        otpDisplayTextView.setText("Your OTP: " + generatedOtp);
+        otpTimerTextView.setText("Time remaining: 15 seconds");
+
+        if (countDownTimer != null) {
+            countDownTimer.cancel();
+        }
+
+        countDownTimer = new CountDownTimer(15000, 1000) {
+            @Override
+            public void onTick(long millisUntilFinished) {
+                otpTimerTextView.setText(
+                        "Time remaining: "
+                                + ((millisUntilFinished + 999) / 1000)
+                                + " seconds");
+            }
+
+            @Override
+            public void onFinish() {
+                otpExpired = true;
+                otpTimerTextView.setText(
+                        "OTP expired. Refresh to get a new one.");
+                otpDisplayTextView.setText("OTP expired");
+            }
+        }.start();
+    }
+
+    private void verifyOtp() {
+        String enteredOtp =
+                otpEditText.getText().toString().trim();
+
+        if (otpExpired) {
+            Toast.makeText(this,
+                    "OTP expired. Tap Refresh OTP to get a new one.",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        if (enteredOtp.isEmpty()) {
+            otpEditText.setError("Enter the OTP");
+            return;
+        }
+
+        if (enteredOtp.equals(generatedOtp)) {
+            if (countDownTimer != null) {
+                countDownTimer.cancel();
+            }
+
+            otpLayout.setVisibility(View.GONE);
+            successLayout.setVisibility(View.VISIBLE);
+            loadUsers();
+
+        } else {
+            Toast.makeText(this, "Invalid OTP. Try again.",
+                    Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void loadUsers() {
+        usersStatusTextView.setText("Loading users...");
+        usersListTextView.setText("");
+
+        executorService.execute(() -> {
+            HttpURLConnection connection = null;
+
+            try {
+                URL url = new URL(API_BASE_URL + "/");
+                connection =
+                        (HttpURLConnection) url.openConnection();
+
+                connection.setRequestMethod("GET");
+                connection.setConnectTimeout(15000);
+                connection.setReadTimeout(15000);
+                connection.setRequestProperty(
+                        "Accept", "application/json");
+
+                int statusCode = connection.getResponseCode();
+
+                InputStream inputStream;
+
+                if (statusCode >= 200 && statusCode < 300) {
+                    inputStream = connection.getInputStream();
+                } else {
+                    inputStream = connection.getErrorStream();
+                }
+
+                if (inputStream == null) {
+                    throw new Exception(
+                            "Server returned HTTP " + statusCode);
+                }
+
+                StringBuilder responseText = new StringBuilder();
+
+                try (BufferedReader reader = new BufferedReader(
+                        new InputStreamReader(
+                                inputStream, StandardCharsets.UTF_8))) {
+
+                    String line;
+
+                    while ((line = reader.readLine()) != null) {
+                        responseText.append(line);
+                    }
+                }
+
+                if (statusCode < 200 || statusCode >= 300) {
+                    throw new Exception(
+                            "Server returned HTTP " + statusCode);
+                }
+
+                // API returns a raw JSON array.
+                JSONArray users =
+                        new JSONArray(responseText.toString());
+
+                StringBuilder result = new StringBuilder();
+
+                for (int i = 0; i < users.length(); i++) {
+                    JSONObject user = users.getJSONObject(i);
+
+                    String firstName = getJsonString(user,
+                            "FirstName", "firstName", "firstname");
+                    String lastName = getJsonString(user,
+                            "LastName", "lastName", "lastname");
+                    String email = getJsonString(user,
+                            "Email", "email");
+
+                    String fullName =
+                            (firstName + " " + lastName).trim();
+
+                    if (fullName.isEmpty()) {
+                        fullName = "User";
+                    }
+
+                    result.append(i + 1)
+                            .append(". ")
+                            .append(fullName)
+                            .append("\n")
+                            .append("   Email: ")
+                            .append(email)
+                            .append("\n\n");
+                }
+
+                String finalResult = result.toString();
+
+                runOnUiThread(() -> {
+                    usersStatusTextView.setText("Users List");
+
+                    if (finalResult.isEmpty()) {
+                        usersListTextView.setText("No users found.");
+                    } else {
+                        usersListTextView.setText(
+                                finalResult.trim());
+                    }
+                });
+
+            } catch (Exception e) {
+                runOnUiThread(() -> {
+                    usersStatusTextView.setText("Users List");
+                    usersListTextView.setText(
+                            "Could not load users.\n"
+                                    + e.getMessage());
+                });
 
             } finally {
-
                 if (connection != null) {
                     connection.disconnect();
                 }
@@ -279,130 +470,104 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void showOtpPage() {
+    private String getJsonString(
+            JSONObject object, String... possibleKeys) {
 
-        loginLayout.setVisibility(View.GONE);
-        signUpLayout.setVisibility(View.GONE);
-        successLayout.setVisibility(View.GONE);
-        otpLayout.setVisibility(View.VISIBLE);
+        for (String key : possibleKeys) {
+            String value = object.optString(key, "");
 
-        otpEditText.setText("");
+            if (!value.isEmpty() && !value.equals("null")) {
+                return value;
+            }
+        }
 
-        Random random = new Random();
-
-        int otpNumber =
-                100000 + random.nextInt(900000);
-
-        generatedOtp = String.valueOf(otpNumber);
-
-        otpDisplayTextView.setText(
-                "Your OTP: " + generatedOtp
-        );
-
-        startOtpTimer();
+        return "";
     }
 
-    private void startOtpTimer() {
+    private JSONObject sendRequest(
+            String endpoint, String method, JSONObject requestBody)
+            throws Exception {
 
-        if (otpTimer != null) {
-            otpTimer.cancel();
-        }
+        HttpURLConnection connection = null;
 
-        otpTimer = new CountDownTimer(15000, 1000) {
+        try {
+            URL url = new URL(API_BASE_URL + endpoint);
+            connection =
+                    (HttpURLConnection) url.openConnection();
 
-            @Override
-            public void onTick(long millisUntilFinished) {
+            connection.setRequestMethod(method);
+            connection.setConnectTimeout(15000);
+            connection.setReadTimeout(15000);
+            connection.setRequestProperty(
+                    "Accept", "application/json");
 
-                long seconds =
-                        millisUntilFinished / 1000;
+            if (requestBody != null) {
+                connection.setDoOutput(true);
+                connection.setRequestProperty(
+                        "Content-Type",
+                        "application/json; charset=UTF-8");
 
-                otpTimerTextView.setText(
-                        "Expires in: "
-                                + seconds
-                                + " seconds"
-                );
+                try (OutputStream outputStream =
+                             connection.getOutputStream()) {
+                    outputStream.write(
+                            requestBody.toString().getBytes(
+                                    StandardCharsets.UTF_8));
+                }
             }
 
-            @Override
-            public void onFinish() {
+            int statusCode = connection.getResponseCode();
 
-                otpTimerTextView.setText(
-                        "OTP expired."
-                );
+            InputStream inputStream;
 
-                generatedOtp = null;
-
-                Toast.makeText(
-                        MainActivity.this,
-                        "OTP expired. Please login again.",
-                        Toast.LENGTH_LONG
-                ).show();
+            if (statusCode >= 200 && statusCode < 400) {
+                inputStream = connection.getInputStream();
+            } else {
+                inputStream = connection.getErrorStream();
             }
 
-        }.start();
-    }
+            StringBuilder responseText = new StringBuilder();
 
-    private void verifyOtp() {
+            if (inputStream != null) {
+                try (BufferedReader reader = new BufferedReader(
+                        new InputStreamReader(
+                                inputStream, StandardCharsets.UTF_8))) {
 
-        String enteredOtp =
-                otpEditText.getText().toString().trim();
+                    String line;
 
-        if (enteredOtp.isEmpty()) {
-
-            Toast.makeText(
-                    this,
-                    "Please enter the OTP.",
-                    Toast.LENGTH_SHORT
-            ).show();
-
-            return;
-        }
-
-        if (generatedOtp == null) {
-
-            Toast.makeText(
-                    this,
-                    "OTP expired. Please login again.",
-                    Toast.LENGTH_LONG
-            ).show();
-
-            return;
-        }
-
-        if (enteredOtp.equals(generatedOtp)) {
-
-            if (otpTimer != null) {
-                otpTimer.cancel();
+                    while ((line = reader.readLine()) != null) {
+                        responseText.append(line);
+                    }
+                }
             }
 
-            otpLayout.setVisibility(View.GONE);
-            successLayout.setVisibility(View.VISIBLE);
+            if (responseText.length() == 0) {
+                throw new Exception(
+                        "Server returned HTTP " + statusCode);
+            }
 
-            Toast.makeText(
-                    this,
-                    "OTP verified successfully!",
-                    Toast.LENGTH_SHORT
-            ).show();
+            JSONObject response =
+                    new JSONObject(responseText.toString());
 
-        } else {
+            if (statusCode >= 400 && !response.has("success")) {
+                response.put("success", false);
+            }
 
-            Toast.makeText(
-                    this,
-                    "Invalid OTP.",
-                    Toast.LENGTH_SHORT
-            ).show();
+            return response;
+
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
         }
     }
 
     @Override
     protected void onDestroy() {
-
-        if (otpTimer != null) {
-            otpTimer.cancel();
+        if (countDownTimer != null) {
+            countDownTimer.cancel();
         }
 
         executorService.shutdown();
-
         super.onDestroy();
     }
 }
