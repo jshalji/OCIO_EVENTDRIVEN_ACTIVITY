@@ -31,10 +31,16 @@ public class MainActivity extends AppCompatActivity {
     private static final String API_BASE_URL =
             "https://user-api-qpau.onrender.com";
 
+    private static final String CUSTOMER_API_BASE_URL =
+            "http://10.0.2.2:3000";
+
     private LinearLayout loginLayout;
     private ScrollView signUpScrollView;
     private LinearLayout otpLayout;
     private LinearLayout successLayout;
+    private LinearLayout dashboardLayout;
+    private ScrollView addCustomerLayout;
+    private LinearLayout customerListLayout;
 
     private EditText usernameEditText;
     private EditText loginPasswordEditText;
@@ -48,10 +54,17 @@ public class MainActivity extends AppCompatActivity {
 
     private EditText otpEditText;
 
+    private EditText customerIdEditText;
+    private EditText customerLastNameEditText;
+    private EditText customerFirstNameEditText;
+    private EditText customerMobileEditText;
+    private EditText customerAddressEditText;
+
     private TextView otpDisplayTextView;
     private TextView otpTimerTextView;
     private TextView usersStatusTextView;
     private TextView usersListTextView;
+    private TextView customerListTextView;
 
     private Button loginButton;
     private Button openSignUpButton;
@@ -59,6 +72,16 @@ public class MainActivity extends AppCompatActivity {
     private Button cancelButton;
     private Button verifyOtpButton;
     private Button refreshOtpButton;
+
+    private Button addCustomerButton;
+    private Button viewCustomersButton;
+    private Button viewUsersButton;
+    private Button dashboardLogoutButton;
+    private Button saveCustomerButton;
+    private Button cancelCustomerButton;
+    private Button refreshCustomersButton;
+    private Button backFromCustomersButton;
+    private Button backFromUsersButton;
 
     private final ExecutorService executorService =
             Executors.newSingleThreadExecutor();
@@ -82,6 +105,9 @@ public class MainActivity extends AppCompatActivity {
         signUpScrollView = findViewById(R.id.signUpScrollView);
         otpLayout = findViewById(R.id.otpLayout);
         successLayout = findViewById(R.id.successLayout);
+        dashboardLayout = findViewById(R.id.dashboardLayout);
+        addCustomerLayout = findViewById(R.id.addCustomerLayout);
+        customerListLayout = findViewById(R.id.customerListLayout);
 
         usernameEditText = findViewById(R.id.usernameEditText);
         loginPasswordEditText =
@@ -107,32 +133,93 @@ public class MainActivity extends AppCompatActivity {
         usersListTextView =
                 findViewById(R.id.usersListTextView);
 
+        customerIdEditText =
+                findViewById(R.id.customerIdEditText);
+        customerLastNameEditText =
+                findViewById(R.id.customerLastNameEditText);
+        customerFirstNameEditText =
+                findViewById(R.id.customerFirstNameEditText);
+        customerMobileEditText =
+                findViewById(R.id.customerMobileEditText);
+        customerAddressEditText =
+                findViewById(R.id.customerAddressEditText);
+
+        customerListTextView =
+                findViewById(R.id.customerListTextView);
+
         loginButton = findViewById(R.id.loginButton);
-        openSignUpButton =
-                findViewById(R.id.openSignUpButton);
+        openSignUpButton = findViewById(R.id.openSignUpButton);
         signUpButton = findViewById(R.id.signUpButton);
         cancelButton = findViewById(R.id.cancelButton);
         verifyOtpButton = findViewById(R.id.verifyOtpButton);
         refreshOtpButton = findViewById(R.id.refreshOtpButton);
+
+        addCustomerButton = findViewById(R.id.addCustomerButton);
+        viewCustomersButton = findViewById(R.id.viewCustomersButton);
+        viewUsersButton = findViewById(R.id.viewUsersButton);
+        dashboardLogoutButton =
+                findViewById(R.id.dashboardLogoutButton);
+        saveCustomerButton = findViewById(R.id.saveCustomerButton);
+        cancelCustomerButton =
+                findViewById(R.id.cancelCustomerButton);
+        refreshCustomersButton =
+                findViewById(R.id.refreshCustomersButton);
+        backFromCustomersButton =
+                findViewById(R.id.backFromCustomersButton);
+
+        backFromUsersButton =
+                findViewById(R.id.backFromUsersButton);
     }
 
     private void setupButtons() {
         loginButton.setOnClickListener(v -> login());
 
         openSignUpButton.setOnClickListener(v -> {
-            loginLayout.setVisibility(View.GONE);
-            otpLayout.setVisibility(View.GONE);
-            successLayout.setVisibility(View.GONE);
+            hideAllScreens();
             signUpScrollView.setVisibility(View.VISIBLE);
         });
 
         signUpButton.setOnClickListener(v -> signUp());
-
         cancelButton.setOnClickListener(v -> showLoginScreen());
-
         verifyOtpButton.setOnClickListener(v -> verifyOtp());
-
         refreshOtpButton.setOnClickListener(v -> generateNewOtp());
+
+        addCustomerButton.setOnClickListener(
+                v -> showAddCustomerScreen());
+
+        viewCustomersButton.setOnClickListener(
+                v -> showCustomersScreen());
+
+        viewUsersButton.setOnClickListener(
+                v -> showUsersScreen());
+
+        dashboardLogoutButton.setOnClickListener(
+                v -> showLoginScreen());
+
+        saveCustomerButton.setOnClickListener(v -> saveCustomer());
+
+        cancelCustomerButton.setOnClickListener(
+                v -> showDashboard());
+
+        refreshCustomersButton.setOnClickListener(
+                v -> loadCustomers());
+
+        backFromCustomersButton.setOnClickListener(
+                v -> showDashboard());
+
+        // FIX: Return from Registered Users to the dashboard.
+        backFromUsersButton.setOnClickListener(
+                v -> showDashboard());
+    }
+
+    private void hideAllScreens() {
+        loginLayout.setVisibility(View.GONE);
+        signUpScrollView.setVisibility(View.GONE);
+        otpLayout.setVisibility(View.GONE);
+        successLayout.setVisibility(View.GONE);
+        dashboardLayout.setVisibility(View.GONE);
+        addCustomerLayout.setVisibility(View.GONE);
+        customerListLayout.setVisibility(View.GONE);
     }
 
     private void showLoginScreen() {
@@ -140,10 +227,30 @@ public class MainActivity extends AppCompatActivity {
             countDownTimer.cancel();
         }
 
+        hideAllScreens();
         loginLayout.setVisibility(View.VISIBLE);
-        signUpScrollView.setVisibility(View.GONE);
-        otpLayout.setVisibility(View.GONE);
-        successLayout.setVisibility(View.GONE);
+    }
+
+    private void showDashboard() {
+        hideAllScreens();
+        dashboardLayout.setVisibility(View.VISIBLE);
+    }
+
+    private void showAddCustomerScreen() {
+        hideAllScreens();
+        addCustomerLayout.setVisibility(View.VISIBLE);
+    }
+
+    private void showCustomersScreen() {
+        hideAllScreens();
+        customerListLayout.setVisibility(View.VISIBLE);
+        loadCustomers();
+    }
+
+    private void showUsersScreen() {
+        hideAllScreens();
+        successLayout.setVisibility(View.VISIBLE);
+        loadUsers();
     }
 
     private void signUp() {
@@ -189,7 +296,8 @@ public class MainActivity extends AppCompatActivity {
                 requestBody.put("Password", password);
 
                 JSONObject response = sendRequest(
-                        "/register", "POST", requestBody);
+                        API_BASE_URL + "/register",
+                        "POST", requestBody);
 
                 boolean success =
                         response.optBoolean("success", false);
@@ -202,7 +310,7 @@ public class MainActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     signUpButton.setEnabled(true);
 
-                    Toast.makeText(MainActivity.this, message,
+                    Toast.makeText(this, message,
                             Toast.LENGTH_LONG).show();
 
                     if (success) {
@@ -223,8 +331,7 @@ public class MainActivity extends AppCompatActivity {
             } catch (Exception e) {
                 runOnUiThread(() -> {
                     signUpButton.setEnabled(true);
-
-                    Toast.makeText(MainActivity.this,
+                    Toast.makeText(this,
                             "Signup error: " + e.getMessage(),
                             Toast.LENGTH_LONG).show();
                 });
@@ -254,7 +361,8 @@ public class MainActivity extends AppCompatActivity {
                 requestBody.put("Password", password);
 
                 JSONObject response = sendRequest(
-                        "/login", "POST", requestBody);
+                        API_BASE_URL + "/login",
+                        "POST", requestBody);
 
                 boolean success =
                         response.optBoolean("success", false);
@@ -268,16 +376,15 @@ public class MainActivity extends AppCompatActivity {
                     if (success) {
                         showOtpScreen();
                     } else {
-                        Toast.makeText(MainActivity.this,
-                                message, Toast.LENGTH_LONG).show();
+                        Toast.makeText(this, message,
+                                Toast.LENGTH_LONG).show();
                     }
                 });
 
             } catch (Exception e) {
                 runOnUiThread(() -> {
                     loginButton.setEnabled(true);
-
-                    Toast.makeText(MainActivity.this,
+                    Toast.makeText(this,
                             "Login error: " + e.getMessage(),
                             Toast.LENGTH_LONG).show();
                 });
@@ -286,11 +393,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showOtpScreen() {
-        loginLayout.setVisibility(View.GONE);
-        signUpScrollView.setVisibility(View.GONE);
-        successLayout.setVisibility(View.GONE);
+        hideAllScreens();
         otpLayout.setVisibility(View.VISIBLE);
-
         generateNewOtp();
     }
 
@@ -348,14 +452,162 @@ public class MainActivity extends AppCompatActivity {
                 countDownTimer.cancel();
             }
 
-            otpLayout.setVisibility(View.GONE);
-            successLayout.setVisibility(View.VISIBLE);
-            loadUsers();
-
+            showDashboard();
         } else {
             Toast.makeText(this, "Invalid OTP. Try again.",
                     Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private void saveCustomer() {
+        String customerId =
+                customerIdEditText.getText().toString().trim();
+        String lastName =
+                customerLastNameEditText.getText().toString().trim();
+        String firstName =
+                customerFirstNameEditText.getText().toString().trim();
+        String mobile =
+                customerMobileEditText.getText().toString().trim();
+        String address =
+                customerAddressEditText.getText().toString().trim();
+
+        if (customerId.isEmpty()) {
+            customerIdEditText.setError("Enter customer ID");
+            return;
+        }
+
+        if (lastName.isEmpty()) {
+            customerLastNameEditText.setError("Enter last name");
+            return;
+        }
+
+        if (firstName.isEmpty()) {
+            customerFirstNameEditText.setError("Enter first name");
+            return;
+        }
+
+        final int id;
+
+        try {
+            id = Integer.parseInt(customerId);
+        } catch (NumberFormatException e) {
+            customerIdEditText.setError(
+                    "Customer ID must be a number");
+            return;
+        }
+
+        if (id < 0) {
+            customerIdEditText.setError(
+                    "Customer ID cannot be negative");
+            return;
+        }
+
+        JSONObject customer = new JSONObject();
+
+        try {
+            customer.put("customerid", id);
+            customer.put("lastname", lastName);
+            customer.put("firstname", firstName);
+            customer.put("mobileno", mobile);
+            customer.put("address", address);
+        } catch (Exception e) {
+            Toast.makeText(this, "Could not prepare customer data.",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        saveCustomerButton.setEnabled(false);
+
+        executorService.execute(() -> {
+            try {
+                JSONObject response = sendRequest(
+                        CUSTOMER_API_BASE_URL + "/customers",
+                        "POST", customer);
+
+                String message = response.optString(
+                        "message", "Customer saved successfully.");
+
+                runOnUiThread(() -> {
+                    saveCustomerButton.setEnabled(true);
+
+                    Toast.makeText(this, message,
+                            Toast.LENGTH_LONG).show();
+
+                    if (response.has("customer")) {
+                        customerIdEditText.setText("");
+                        customerLastNameEditText.setText("");
+                        customerFirstNameEditText.setText("");
+                        customerMobileEditText.setText("");
+                        customerAddressEditText.setText("");
+
+                        showCustomersScreen();
+                    }
+                });
+
+            } catch (Exception e) {
+                runOnUiThread(() -> {
+                    saveCustomerButton.setEnabled(true);
+                    Toast.makeText(this,
+                            "Save failed: " + e.getMessage(),
+                            Toast.LENGTH_LONG).show();
+                });
+            }
+        });
+    }
+
+    private void loadCustomers() {
+        customerListTextView.setText("Loading customers...");
+        refreshCustomersButton.setEnabled(false);
+
+        executorService.execute(() -> {
+            try {
+                JSONArray customers = getArrayRequest(
+                        CUSTOMER_API_BASE_URL + "/customers");
+
+                StringBuilder result = new StringBuilder();
+
+                for (int i = 0; i < customers.length(); i++) {
+                    JSONObject customer = customers.getJSONObject(i);
+
+                    result.append("Customer ID: ")
+                            .append(customer.optString("customerid", ""))
+                            .append("\n")
+                            .append("Name: ")
+                            .append(customer.optString("firstname", ""))
+                            .append(" ")
+                            .append(customer.optString("lastname", ""))
+                            .append("\n")
+                            .append("Mobile: ")
+                            .append(customer.optString("mobileno", ""))
+                            .append("\n")
+                            .append("Address: ")
+                            .append(customer.optString("address", ""))
+                            .append("\n\n");
+                }
+
+                String finalResult = result.toString();
+
+                runOnUiThread(() -> {
+                    refreshCustomersButton.setEnabled(true);
+
+                    if (finalResult.isEmpty()) {
+                        customerListTextView.setText(
+                                "No customers found.");
+                    } else {
+                        customerListTextView.setText(
+                                finalResult.trim());
+                    }
+                });
+
+            } catch (Exception e) {
+                runOnUiThread(() -> {
+                    refreshCustomersButton.setEnabled(true);
+                    customerListTextView.setText(
+                            "Could not load customers.\n"
+                                    + e.getMessage());
+                });
+            }
+        });
     }
 
     private void loadUsers() {
@@ -367,8 +619,8 @@ public class MainActivity extends AppCompatActivity {
 
             try {
                 URL url = new URL(API_BASE_URL + "/");
-                connection =
-                        (HttpURLConnection) url.openConnection();
+                connection = (HttpURLConnection)
+                        url.openConnection();
 
                 connection.setRequestMethod("GET");
                 connection.setConnectTimeout(15000);
@@ -378,13 +630,10 @@ public class MainActivity extends AppCompatActivity {
 
                 int statusCode = connection.getResponseCode();
 
-                InputStream inputStream;
-
-                if (statusCode >= 200 && statusCode < 300) {
-                    inputStream = connection.getInputStream();
-                } else {
-                    inputStream = connection.getErrorStream();
-                }
+                InputStream inputStream =
+                        statusCode >= 200 && statusCode < 300
+                                ? connection.getInputStream()
+                                : connection.getErrorStream();
 
                 if (inputStream == null) {
                     throw new Exception(
@@ -393,10 +642,11 @@ public class MainActivity extends AppCompatActivity {
 
                 StringBuilder responseText = new StringBuilder();
 
-                try (BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(
-                                inputStream, StandardCharsets.UTF_8))) {
-
+                try (BufferedReader reader =
+                             new BufferedReader(
+                                     new InputStreamReader(
+                                             inputStream,
+                                             StandardCharsets.UTF_8))) {
                     String line;
 
                     while ((line = reader.readLine()) != null) {
@@ -409,7 +659,6 @@ public class MainActivity extends AppCompatActivity {
                             "Server returned HTTP " + statusCode);
                 }
 
-                // API returns a raw JSON array.
                 JSONArray users =
                         new JSONArray(responseText.toString());
 
@@ -418,12 +667,14 @@ public class MainActivity extends AppCompatActivity {
                 for (int i = 0; i < users.length(); i++) {
                     JSONObject user = users.getJSONObject(i);
 
-                    String firstName = getJsonString(user,
-                            "FirstName", "firstName", "firstname");
-                    String lastName = getJsonString(user,
-                            "LastName", "lastName", "lastname");
-                    String email = getJsonString(user,
-                            "Email", "email");
+                    String firstName = getJsonString(
+                            user, "FirstName", "firstName", "firstname");
+
+                    String lastName = getJsonString(
+                            user, "LastName", "lastName", "lastname");
+
+                    String email = getJsonString(
+                            user, "Email", "email");
 
                     String fullName =
                             (firstName + " " + lastName).trim();
@@ -446,12 +697,10 @@ public class MainActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     usersStatusTextView.setText("Users List");
 
-                    if (finalResult.isEmpty()) {
-                        usersListTextView.setText("No users found.");
-                    } else {
-                        usersListTextView.setText(
-                                finalResult.trim());
-                    }
+                    usersListTextView.setText(
+                            finalResult.isEmpty()
+                                    ? "No users found."
+                                    : finalResult.trim());
                 });
 
             } catch (Exception e) {
@@ -485,15 +734,16 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private JSONObject sendRequest(
-            String endpoint, String method, JSONObject requestBody)
-            throws Exception {
+            String requestUrl,
+            String method,
+            JSONObject requestBody) throws Exception {
 
         HttpURLConnection connection = null;
 
         try {
-            URL url = new URL(API_BASE_URL + endpoint);
-            connection =
-                    (HttpURLConnection) url.openConnection();
+            URL url = new URL(requestUrl);
+            connection = (HttpURLConnection)
+                    url.openConnection();
 
             connection.setRequestMethod(method);
             connection.setConnectTimeout(15000);
@@ -517,21 +767,19 @@ public class MainActivity extends AppCompatActivity {
 
             int statusCode = connection.getResponseCode();
 
-            InputStream inputStream;
-
-            if (statusCode >= 200 && statusCode < 400) {
-                inputStream = connection.getInputStream();
-            } else {
-                inputStream = connection.getErrorStream();
-            }
+            InputStream inputStream =
+                    statusCode >= 200 && statusCode < 400
+                            ? connection.getInputStream()
+                            : connection.getErrorStream();
 
             StringBuilder responseText = new StringBuilder();
 
             if (inputStream != null) {
-                try (BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(
-                                inputStream, StandardCharsets.UTF_8))) {
-
+                try (BufferedReader reader =
+                             new BufferedReader(
+                                     new InputStreamReader(
+                                             inputStream,
+                                             StandardCharsets.UTF_8))) {
                     String line;
 
                     while ((line = reader.readLine()) != null) {
@@ -552,7 +800,77 @@ public class MainActivity extends AppCompatActivity {
                 response.put("success", false);
             }
 
+            if (statusCode >= 400 && !response.has("message")) {
+                String error = response.optString("error", "");
+                String details = response.optString("details", "");
+
+                String message = error;
+
+                if (!details.isEmpty()) {
+                    message += ": " + details;
+                }
+
+                response.put(
+                        "message",
+                        message.isEmpty()
+                                ? "HTTP " + statusCode
+                                : message);
+            }
+
             return response;
+
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+    }
+
+    private JSONArray getArrayRequest(String requestUrl)
+            throws Exception {
+
+        HttpURLConnection connection = null;
+
+        try {
+            URL url = new URL(requestUrl);
+            connection = (HttpURLConnection)
+                    url.openConnection();
+
+            connection.setRequestMethod("GET");
+            connection.setConnectTimeout(15000);
+            connection.setReadTimeout(15000);
+            connection.setRequestProperty(
+                    "Accept", "application/json");
+
+            int statusCode = connection.getResponseCode();
+
+            InputStream inputStream =
+                    statusCode >= 200 && statusCode < 300
+                            ? connection.getInputStream()
+                            : connection.getErrorStream();
+
+            StringBuilder responseText = new StringBuilder();
+
+            if (inputStream != null) {
+                try (BufferedReader reader =
+                             new BufferedReader(
+                                     new InputStreamReader(
+                                             inputStream,
+                                             StandardCharsets.UTF_8))) {
+                    String line;
+
+                    while ((line = reader.readLine()) != null) {
+                        responseText.append(line);
+                    }
+                }
+            }
+
+            if (statusCode < 200 || statusCode >= 300) {
+                throw new Exception(
+                        "HTTP " + statusCode + ": " + responseText);
+            }
+
+            return new JSONArray(responseText.toString());
 
         } finally {
             if (connection != null) {
